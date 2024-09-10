@@ -1,0 +1,17 @@
+<?xml version="1.0"?>
+<ListaMaquinas>
+    <Maquina>
+        <NombreMaquina> [Texto] </NombreMaquina>
+        <CantidadLineasProduccion> n </CantidadLineasProduccion>
+        <CantidadComponentes> m </CantidadComponentes>
+        <TiempoEnsamblaje> x </TiempoEnsamblaje>
+        <ListadoProductos>
+            <Producto>
+                <nombre> [Texto] </nombre>
+                <elaboracion>
+                    [Texto]1
+                </elaboracion>
+            </Producto>
+        </ListadoProductos>
+    </Maquina>
+</ListaMaquinas>
