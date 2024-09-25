@@ -9,14 +9,45 @@
 </head>
 
 <body>
-    <button class="button1" type="button">Archivo</button>
-    <button class="button2" type="button">Reportes</button>
-    <button class="button3" type="button" href="/ayuda">Ayuda</button>
+    <a class="button1" type="button" href="/">Archivo</a>
+    <a class="button2" type="button">Reportes</a>
+    <a class="button3" type="button" href="/ayuda">Ayuda</a>
+
     <div class="container">
-        <h1>Pagina principal</h1>
-        <ul class="alumnos-lista">
-            paco
-        </ul>
+        <h1>Página principal</h1>
+        <h2>Subir el archivo para analizar las maquinas</h2>
+        <form action="/buscar" method="POST" enctype="multipart/form-data">
+            <input type="file" id="fileInput" name="file" accept=".xml">
+            <button type="submit" class="button4">Entrada</button>
+        </form>
+        <button type="submit" class="button5">Salida</button>
+
+        <h2>Seleccionar Máquina y Producto</h2>
+        <form action="/seleccionar" method="POST">
+            <select name="maquina" id="maquina-select" onchange="this.form.submit()">
+                <option value="">Seleccione una máquina</option>
+                {% if maquinas %}
+                {% for maquina in maquinas %}
+                <option value="{{ maquina.NombreMaquina }}" {% if maquina.NombreMaquina==maquina_seleccionada
+                    %}selected{% endif %}>
+                    {{ maquina.NombreMaquina }}
+                </option>
+                {% endfor %}
+                {% endif %}
+            </select>
+        </form>
+
+        {% if productos %}
+        <form action="/seleccionar_producto" method="POST">
+            <select name="producto" id="producto-select">
+                <option value="">Seleccione un producto</option>
+                {% for producto in productos %}
+                <option value="{{ producto.nombre }}">{{ producto.nombre }}</option>
+                {% endfor %}
+            </select>
+            <button type="submit">Seleccionar Producto</button>
+        </form>
+        {% endif %}
     </div>
 </body>
 

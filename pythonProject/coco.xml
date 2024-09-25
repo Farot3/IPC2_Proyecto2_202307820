@@ -1,0 +1,43 @@
+<?xml version="1.0"?>
+<ListaMaquinas>
+    <Maquina>
+        <NombreMaquina> Macaco </NombreMaquina>
+        <CantidadLineasProduccion> 3 </CantidadLineasProduccion>
+        <CantidadComponentes> 4 </CantidadComponentes>
+        <TiempoEnsamblaje> 5 </TiempoEnsamblaje>
+        <ListadoProductos>
+            <Producto>
+                <nombre> caja </nombre>
+                <elaboracion>
+                    Diego
+                </elaboracion>
+            </Producto>
+            <Producto>
+                <nombre> Carro </nombre>
+                <elaboracion>
+                    Juan
+                </elaboracion>
+            </Producto>
+        </ListadoProductos>
+    </Maquina>   
+    <Maquina>
+        <NombreMaquina> Marcelo </NombreMaquina>
+        <CantidadLineasProduccion> 2 </CantidadLineasProduccion>
+        <CantidadComponentes> 3 </CantidadComponentes>
+        <TiempoEnsamblaje> 4 </TiempoEnsamblaje>
+        <ListadoProductos>
+            <Producto>
+                <nombre> socket de luz </nombre>
+                <elaboracion>
+                    ROberto
+                </elaboracion>
+            </Producto>
+            <Producto>
+                <nombre> Fusible </nombre>
+                <elaboracion>
+                    Pedro
+                </elaboracion>
+            </Producto>
+        </ListadoProductos>
+    </Maquina>
+</ListaMaquinas>
