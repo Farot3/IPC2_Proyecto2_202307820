@@ -18,6 +18,12 @@
                     Juan
                 </elaboracion>
             </Producto>
+            <Producto>
+                <nombre> bombilla </nombre>
+                <elaboracion>
+                    Lolero
+                </elaboracion>
+            </Producto>
         </ListadoProductos>
     </Maquina>   
     <Maquina>

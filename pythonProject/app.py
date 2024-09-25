@@ -1,14 +1,17 @@
-from flask import Flask, render_template, request, session
-from modules.ListaMaquina import leer_maquina
+from flask import Flask, render_template, request
+from modules.ListaMaquina import leer_maquina, ListaMaquina
+from modules.NodoProductoSeleccionado import NodoProductoSeleccionado
+from modules.ListaProductoSeleccionado import ListaProductoSeleccionado
 
 app = Flask(__name__)
 app.secret_key = "tu_clave_secreta"
 
+lista_maquinas_global = ListaMaquina()
+
 
 @app.route("/")
 def Entrada():
-    print("Antes de render_template")
-    return render_template("index.html")
+    return render_template("index.html", maquinas=lista_maquinas_global)
 
 
 @app.route("/ayuda")
@@ -18,52 +21,47 @@ def ayuda():
 
 @app.route("/buscar", methods=["GET", "POST"])
 def index():
+    global lista_maquinas_global
     if request.method == "POST":
         uploaded_file = request.files["file"]
 
         if uploaded_file.filename.endswith(".xml"):
-            # Leer el archivo XML y procesarlo
-            contenido_archivo = uploaded_file.read().decode(
-                "utf-8"
-            )  # Decodificar a UTF-8
-            lista_maquinas = leer_maquina(
-                contenido_archivo
-            )  # Pasar el contenido a la función leer_maquina
-            print("La máquina se ha leído")
-            lista_maquinas.imprimir()
-            return render_template("index.html", maquinas=lista_maquinas)
+            contenido_archivo = uploaded_file.read().decode("utf-8")
+            lista_maquinas_global = leer_maquina(contenido_archivo)
+            lista_maquinas_global.imprimir()
+
+            return render_template("index.html", maquinas=lista_maquinas_global)
         else:
             return "Solo se permiten archivos .xml", 400
 
-    return render_template("index.html")
+    return render_template("index.html", maquinas=lista_maquinas_global)
 
 
-@app.route("/seleccionar", methods=["POST"])
-def seleccionar_maquina():
-    maquina_seleccionada = request.form.get("maquina")
-    lista_maquinas = session.get("lista_maquinas")
+@app.route("/seleccionar_maquina/<nombre_maquina>")
+def seleccionar_maquina(nombre_maquina):
+    global lista_maquinas_global
 
-    productos = None
-    if lista_maquinas and maquina_seleccionada:
-        maquina = lista_maquinas.buscar_maquina(maquina_seleccionada)
-        if maquina:
-            productos = []
-            producto_actual = maquina.productos
-            while producto_actual:
-                productos.append(producto_actual)
-                producto_actual = producto_actual.siguiente
+    # Buscar la máquina seleccionada
+    maquina_seleccionada = lista_maquinas_global.buscar_maquina(nombre_maquina)
+    productos_seleccionados = ListaProductoSeleccionado()
+    if maquina_seleccionada:
+        producto_actual = maquina_seleccionada.productos.cabeza
+        while producto_actual:
+            nodo_producto_seleccionado = NodoProductoSeleccionado(producto_actual)
+            productos_seleccionados.agregar(nodo_producto_seleccionado)
+            producto_actual = producto_actual.siguiente
 
     return render_template(
         "index.html",
-        maquinas=lista_maquinas,
+        maquinas=lista_maquinas_global,
         maquina_seleccionada=maquina_seleccionada,
-        productos=productos,
+        productos=productos_seleccionados,
     )
 
 
-@app.route("/seleccionar_producto", methods=["POST"])
-def seleccionar_producto():
-    producto_seleccionado = request.form.get("producto")
+@app.route("/seleccionar_producto/<nombre_producto>")
+def seleccionar_producto(nombre_producto):
+    producto_seleccionado = nombre_producto
     return f"Producto seleccionado: {producto_seleccionado}"
 
 

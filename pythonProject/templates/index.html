@@ -22,31 +22,22 @@
         </form>
         <button type="submit" class="button5">Salida</button>
 
-        <h2>Seleccionar Máquina y Producto</h2>
-        <form action="/seleccionar" method="POST">
-            <select name="maquina" id="maquina-select" onchange="this.form.submit()">
-                <option value="">Seleccione una máquina</option>
-                {% if maquinas %}
-                {% for maquina in maquinas %}
-                <option value="{{ maquina.NombreMaquina }}" {% if maquina.NombreMaquina==maquina_seleccionada
-                    %}selected{% endif %}>
-                    {{ maquina.NombreMaquina }}
-                </option>
-                {% endfor %}
-                {% endif %}
-            </select>
+        <h2>Seleccionar Máquina</h2>
+        {% if maquinas.cabeza %}
+        {% for maquina in maquinas %}
+        <form action="/seleccionar_maquina/{{ maquina.nombre_maquina }}" method="GET">
+            <button type="submit">{{ maquina.nombre_maquina }}</button>
         </form>
+        {% endfor %}
+        {% endif %}
 
-        {% if productos %}
-        <form action="/seleccionar_producto" method="POST">
-            <select name="producto" id="producto-select">
-                <option value="">Seleccione un producto</option>
-                {% for producto in productos %}
-                <option value="{{ producto.nombre }}">{{ producto.nombre }}</option>
-                {% endfor %}
-            </select>
-            <button type="submit">Seleccionar Producto</button>
-        </form>
+        {% if maquina_seleccionada %}
+        <h2>Productos de la Máquina Seleccionada: {{ maquina_seleccionada.nombre_maquina }}</h2>
+        <ul>
+            {% for producto in productos %}
+            <li>{{ producto.producto.nombre }} (Elaborado por: {{ producto.producto.elaboracion }})</li>
+            {% endfor %}
+        </ul>
         {% endif %}
     </div>
 </body>

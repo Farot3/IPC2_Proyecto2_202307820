@@ -1,33 +1,26 @@
 import xml.etree.ElementTree as ET
-from modules.NodoMaquina import NodoMaquina
+from modules.NodoMaquina import NodoMaquinaConProductos
 from modules.NodoProducto import NodoProducto
+from modules.ListaProducto import ListaProducto
 
 
 class ListaMaquina:
     def __init__(self):
         self.cabeza = None
 
-    def __iter__(self):
-        actual = self.cabeza
-        while actual:
-            yield actual
-            actual = actual.siguiente
-
     def agregar(self, nodo):
         if not self.cabeza:
-            self.cabeza = self.cola = nodo
+            self.cabeza = nodo
         else:
-            nodo.anterior = self.cola
-            self.cola.siguiente = nodo
-            self.cola = nodo
+            actual = self.cabeza
+            while actual.siguiente:
+                actual = actual.siguiente
+            actual.siguiente = nodo
 
     def buscar_maquina(self, nombre_maquina):
         actual = self.cabeza
         while actual:
-            if (
-                isinstance(actual, NodoMaquina)
-                and actual.NombreMaquina == nombre_maquina
-            ):
+            if actual.nombre_maquina == nombre_maquina:
                 return actual
             actual = actual.siguiente
         return None
@@ -35,20 +28,26 @@ class ListaMaquina:
     def imprimir(self):
         actual = self.cabeza
         while actual:
-            if isinstance(actual, NodoMaquina):
-                print(f"Máquina: {actual.NombreMaquina}")
-                print(f"  Líneas de producción: {actual.CantidadLineas}")
-                print(f"  Componentes: {actual.CantidadComponentes}")
-                print(f"  Tiempo de ensamblaje: {actual.TiempoEnsamblaje}")
-                print("  Productos:")
-                producto = actual.productos
-                while producto:
-                    print(
-                        f"    - {producto.nombre} (Elaborado por: {producto.elaboracion})"
-                    )
-                    producto = producto.siguiente
+            print(f"Máquina: {actual.nombre_maquina}")
+            print(f"  Líneas de producción: {actual.cantidad_lineas}")
+            print(f"  Componentes: {actual.cantidad_componentes}")
+            print(f"  Tiempo de ensamblaje: {actual.tiempo_ensamblaje}")
+            print("  Productos:")
+            actual.productos.imprimir()
             actual = actual.siguiente
         print()
+
+    def __iter__(self):
+        self._iter_node = self.cabeza
+        return self
+
+    def __next__(self):
+        if self._iter_node:
+            current = self._iter_node
+            self._iter_node = self._iter_node.siguiente
+            return current
+        else:
+            raise StopIteration
 
 
 def leer_maquina(archivo_xml):
@@ -63,18 +62,19 @@ def leer_maquina(archivo_xml):
         cantidad_componentes = maquina.find("CantidadComponentes").text.strip()
         tiempo_ensamblaje = maquina.find("TiempoEnsamblaje").text.strip()
 
-        nodo_maquina = NodoMaquina(
+        nodo_maquina = NodoMaquinaConProductos(
             nombre_maquina, cantidad_lineas, cantidad_componentes, tiempo_ensamblaje
         )
 
-        lista_productos = ListaMaquina()
         listado_productos = maquina.find("ListadoProductos")
         for producto in listado_productos.findall("Producto"):
             nombre_producto = producto.find("nombre").text.strip()
             elaboracion = producto.find("elaboracion").text.strip()
-            lista_productos.agregar(NodoProducto(nombre_producto, elaboracion))
+            nodo_producto = NodoProducto(nombre_producto, elaboracion)
+            nodo_maquina.productos.agregar(nodo_producto)
 
-        nodo_maquina.productos = lista_productos.cabeza
         lista_maquinas.agregar(nodo_maquina)
 
+    print("Machines Loaded from XML:")
+    lista_maquinas.imprimir()
     return lista_maquinas
