@@ -11,6 +11,14 @@ class ListaProducto:
                 actual = actual.siguiente
             actual.siguiente = nodo
 
+    def buscar_producto(self, nombre_producto):
+        actual = self.cabeza
+        while actual:
+            if actual.nombre == nombre_producto:
+                return actual
+            actual = actual.siguiente
+        return None
+
     def imprimir(self):
         actual = self.cabeza
         while actual:

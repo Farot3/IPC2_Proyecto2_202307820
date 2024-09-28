@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Detalles del Producto</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+
+<body>
+    <a class="button1" type="button" href="/">Archivo</a>
+    <a class="button2" type="button">Reportes</a>
+    <a class="button3" type="button" href="/ayuda">Ayuda</a>
+
+    <div class="container">
+        <h1>Detalles del Producto</h1>
+        {% if maquina and producto %}
+        <h2>Máquina: {{ maquina.nombre_maquina }}</h2>
+        <p>Líneas de producción: {{ maquina.cantidad_lineas }}</p>
+        <p>Componentes: {{ maquina.cantidad_componentes }}</p>
+        <p>Tiempo de ensamblaje: {{ maquina.tiempo_ensamblaje }}</p>
+        <h2>Producto: {{ producto.nombre }}</h2>
+        <p>Elaborado por: {{ producto.elaboracion }}</p>
+
+        <form action="/producto/{{ maquina.nombre_maquina }}/{{ producto.nombre }}" method="POST">
+            <button type="submit">Simular Ensamblaje</button>
+        </form>
+
+        {% if resultado_simulacion %}
+        <div id="resultado-simulacion">
+            <h3>Resultado de la Simulación</h3>
+            <p>El producto {{ producto.nombre }} se puede elaborar óptimamente en {{ resultado_simulacion.tiempo_total
+                }} segundos.</p>
+        </div>
+        {% endif %}
+
+        {% else %}
+        <p>Producto no encontrado.</p>
+        {% endif %}
+    </div>
+</body>
+
+</html>

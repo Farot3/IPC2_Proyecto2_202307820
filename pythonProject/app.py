@@ -2,6 +2,7 @@ from flask import Flask, render_template, request
 from modules.ListaMaquina import leer_maquina, ListaMaquina
 from modules.NodoProductoSeleccionado import NodoProductoSeleccionado
 from modules.ListaProductoSeleccionado import ListaProductoSeleccionado
+from modules.Esamblaje import Simulador
 
 app = Flask(__name__)
 app.secret_key = "tu_clave_secreta"
@@ -23,16 +24,19 @@ def ayuda():
 def index():
     global lista_maquinas_global
     if request.method == "POST":
-        uploaded_file = request.files["file"]
+        uploaded_files = request.files.getlist("file")
 
-        if uploaded_file.filename.endswith(".xml"):
-            contenido_archivo = uploaded_file.read().decode("utf-8")
-            lista_maquinas_global = leer_maquina(contenido_archivo)
-            lista_maquinas_global.imprimir()
+        for uploaded_file in uploaded_files:
+            if uploaded_file.filename.endswith(".xml"):
+                contenido_archivo = uploaded_file.read().decode("utf-8")
+                lista_maquinas_global = leer_maquina(
+                    contenido_archivo, lista_maquinas_global
+                )
+            else:
+                return "Solo se permiten archivos .xml", 400
 
-            return render_template("index.html", maquinas=lista_maquinas_global)
-        else:
-            return "Solo se permiten archivos .xml", 400
+        lista_maquinas_global.imprimir()
+        return render_template("index.html", maquinas=lista_maquinas_global)
 
     return render_template("index.html", maquinas=lista_maquinas_global)
 
@@ -59,10 +63,68 @@ def seleccionar_maquina(nombre_maquina):
     )
 
 
-@app.route("/seleccionar_producto/<nombre_producto>")
+@app.route("/seleccionar_producto/<nombre_producto>", methods=["GET", "POST"])
 def seleccionar_producto(nombre_producto):
-    producto_seleccionado = nombre_producto
-    return f"Producto seleccionado: {producto_seleccionado}"
+    global lista_maquinas_global
+
+    maquina_seleccionada = None
+    producto_seleccionado = None
+
+    # Buscar el producto seleccionado y la máquina correspondiente
+    actual_maquina = lista_maquinas_global.cabeza
+    while actual_maquina:
+        producto_actual = actual_maquina.productos.cabeza
+        while producto_actual:
+            if producto_actual.nombre == nombre_producto:
+                maquina_seleccionada = actual_maquina
+                producto_seleccionado = producto_actual
+                break
+            producto_actual = producto_actual.siguiente
+        if producto_seleccionado:
+            break
+        actual_maquina = actual_maquina.siguiente
+
+    return render_template(
+        "producto.html",
+        maquina=maquina_seleccionada,
+        producto=producto_seleccionado,
+    )
+
+
+@app.route("/producto/<nombre_maquina>/<nombre_producto>", methods=["GET", "POST"])
+def producto(nombre_maquina, nombre_producto):
+    maquina = lista_maquinas_global.buscar_maquina(nombre_maquina)
+    if not maquina:
+        return "Máquina no encontrada", 404
+
+    producto = maquina.productos.buscar_producto(nombre_producto)
+    if not producto:
+        return "Producto no encontrado", 404
+
+    resultado_simulacion = None
+    if request.method == "POST":
+        print("Solicitud POST recibida")  # Mensaje de depuración
+        resultado_simulacion = Simulador.simular_ensamblaje(maquina, producto)
+        # Imprimir el resultado en consola
+        print(
+            f"El producto {producto.nombre} se puede elaborar óptimamente en {resultado_simulacion.tiempo_total} segundos."
+        )
+        nodo_actual = resultado_simulacion.pasos.frente
+        while nodo_actual:
+            acciones = nodo_actual.dato.acciones
+            accion_actual = acciones.frente
+            while accion_actual:
+                print(accion_actual.dato, end=" | ")
+                accion_actual = accion_actual.siguiente
+            print()
+            nodo_actual = nodo_actual.siguiente
+
+    return render_template(
+        "producto.html",
+        maquina=maquina,
+        producto=producto,
+        resultado_simulacion=resultado_simulacion,
+    )
 
 
 if __name__ == "__main__":

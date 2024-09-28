@@ -15,9 +15,9 @@
 
     <div class="container">
         <h1>Página principal</h1>
-        <h2>Subir el archivo para analizar las maquinas</h2>
+        <h2>Subir los archivos para analizar las maquinas</h2>
         <form action="/buscar" method="POST" enctype="multipart/form-data">
-            <input type="file" id="fileInput" name="file" accept=".xml">
+            <input type="file" id="fileInput" name="file" accept=".xml" multiple>
             <button type="submit" class="button4">Entrada</button>
         </form>
         <button type="submit" class="button5">Salida</button>
@@ -33,11 +33,14 @@
 
         {% if maquina_seleccionada %}
         <h2>Productos de la Máquina Seleccionada: {{ maquina_seleccionada.nombre_maquina }}</h2>
-        <ul>
+        <div>
             {% for producto in productos %}
-            <li>{{ producto.producto.nombre }} (Elaborado por: {{ producto.producto.elaboracion }})</li>
+            <form action="/seleccionar_producto/{{ producto.producto.nombre }}" method="GET">
+                <button type="submit">{{ producto.producto.nombre }} (Elaborado por: {{ producto.producto.elaboracion
+                    }})</button>
+            </form>
             {% endfor %}
-        </ul>
+        </div>
         {% endif %}
     </div>
 </body>

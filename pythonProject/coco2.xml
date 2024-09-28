@@ -1,0 +1,49 @@
+<?xml version="1.0"?>
+<ListaMaquinas>
+    <Maquina>
+        <NombreMaquina> TodoTerreno </NombreMaquina>
+        <CantidadLineasProduccion> 4 </CantidadLineasProduccion>
+        <CantidadComponentes> 2 </CantidadComponentes>
+        <TiempoEnsamblaje> 6 </TiempoEnsamblaje>
+        <ListadoProductos>
+            <Producto>
+                <nombre> Avion </nombre>
+                <elaboracion>
+                    Yanet
+                </elaboracion>
+            </Producto>
+            <Producto>
+                <nombre> Avioneta </nombre>
+                <elaboracion>
+                    Larry
+                </elaboracion>
+            </Producto>
+            <Producto>
+                <nombre> Cable </nombre>
+                <elaboracion>
+                    Minion
+                </elaboracion>
+            </Producto>
+        </ListadoProductos>
+    </Maquina>   
+    <Maquina>
+        <NombreMaquina> Lirio </NombreMaquina>
+        <CantidadLineasProduccion> 3 </CantidadLineasProduccion>
+        <CantidadComponentes> 4 </CantidadComponentes>
+        <TiempoEnsamblaje> 6 </TiempoEnsamblaje>
+        <ListadoProductos>
+            <Producto>
+                <nombre> pachon </nombre>
+                <elaboracion>
+                    RIgoberto
+                </elaboracion>
+            </Producto>
+            <Producto>
+                <nombre> Audifonos </nombre>
+                <elaboracion>
+                    EL Chavo
+                </elaboracion>
+            </Producto>
+        </ListadoProductos>
+    </Maquina>
+</ListaMaquinas>

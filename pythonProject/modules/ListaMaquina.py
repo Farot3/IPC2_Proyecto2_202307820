@@ -1,7 +1,6 @@
 import xml.etree.ElementTree as ET
 from modules.NodoMaquina import NodoMaquinaConProductos
 from modules.NodoProducto import NodoProducto
-from modules.ListaProducto import ListaProducto
 
 
 class ListaMaquina:
@@ -50,11 +49,9 @@ class ListaMaquina:
             raise StopIteration
 
 
-def leer_maquina(archivo_xml):
+def leer_maquina(archivo_xml, lista_maquinas):
     tree = ET.ElementTree(ET.fromstring(archivo_xml))
     root = tree.getroot()
-
-    lista_maquinas = ListaMaquina()
 
     for maquina in root.findall("Maquina"):
         nombre_maquina = maquina.find("NombreMaquina").text.strip()
