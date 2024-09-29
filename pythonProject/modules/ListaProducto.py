@@ -23,6 +23,8 @@ class ListaProducto:
         actual = self.cabeza
         while actual:
             print(f"Producto: {actual.nombre} (Elaborado por: {actual.elaboracion})")
+            print("  Pasos de elaboración:")
+            actual.pasos.imprimir()
             actual = actual.siguiente
         print()
 

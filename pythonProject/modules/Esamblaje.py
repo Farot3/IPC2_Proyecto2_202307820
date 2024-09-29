@@ -1,93 +1,129 @@
-from modules.Cola import Cola
+import re
+from modules.NodoMatriz import Matriz
+from modules.NodoPaso import ListaPasos
 
 
-class PasoSimulacion:
-    def __init__(self, tiempo, acciones):
-        self.tiempo = tiempo
-        self.acciones = acciones
+class Producto:
+    def __init__(self, nombre, elaboracion):
+        self.nombre = nombre
+        self.pasos = ListaPasos()
+        matches = re.findall(r"L\d+C\d+", elaboracion)
+        for match in matches:
+            linea, componente = map(int, match[1:].split("C"))
+            self.pasos.agregar(linea, componente)
 
 
-class ResultadoSimulacion:
-    def __init__(self, tiempo_total, pasos):
-        self.tiempo_total = tiempo_total
-        self.pasos = pasos
+def mover_brazo(linea, paso):
+    if paso.componente > linea.posicion_brazo:
+        linea.posicion_brazo += 1
+    else:
+        linea.posicion_brazo -= 1
+    return f"Mover brazo – componente {linea.posicion_brazo}"
+
+
+def iniciar_ensamblaje(linea, paso, maquina):
+    linea.tiempo_ensamblaje_restante = maquina.tiempo_ensamblaje - 1
+    return f"Iniciar ensamblaje C{paso.componente}"
+
+
+def verificar_ensamblando(maquina):
+    for i in range(maquina.cantidad_lineas):
+        linea = maquina.lineas.obtener(i)
+        if linea.tiempo_ensamblaje_restante > 0:
+            return True
+    return False
+
+
+def reiniciar_maquina(maquina):
+    for i in range(maquina.cantidad_lineas):
+        linea = maquina.lineas.obtener(i)
+        linea.posicion_brazo = 0
+        linea.tiempo_ensamblaje_restante = 0
+    maquina.tabla = Matriz()
 
 
 class Simulador:
     @staticmethod
-    def simular_ensamblaje(maquina, producto):
+    def simular(maquina, producto):
+        reiniciar_maquina(
+            maquina
+        )  # Reiniciar la máquina antes de comenzar la simulación
+
+        tiempo_total = 0
+        pasos_producto = producto.pasos
+
         print(f"Simulando ensamblaje de {producto.nombre} en {maquina.nombre_maquina}")
-
-        pasos = producto.elaboracion.split()
-        total_tiempo = 0
-        lineas = int(maquina.cantidad_lineas)
-        componentes = int(maquina.cantidad_componentes)
-        tiempo_ensamblaje = int(maquina.tiempo_ensamblaje)
-
-        lineas_ensamblaje = Cola()
-        for _ in range(lineas):
-            lineas_ensamblaje.encolar({"posicion": 0, "ensamblando": False})
-
-        salida = Cola()
-
-        while pasos:
-            segundo_actual = salida.frente.dato.tiempo + 1 if salida.frente else 1
-            acciones = Cola()
-            acciones.encolar(f"{segundo_actual}o. Segundo")
-
-            for _ in range(lineas):
-                acciones.encolar("No hacer nada")
-
-            linea_actual = lineas_ensamblaje.frente
-            indice = 1
-            while linea_actual:
-                if linea_actual.dato["ensamblando"]:
-                    linea_actual.dato["ensamblando"] = False
-                    Simulador._actualizar_accion(
-                        acciones,
-                        indice,
-                        f"Ensamblar - Componente {linea_actual.dato['posicion']}",
-                    )
-                elif pasos:
-                    paso = pasos[0]
-                    # Aquí procesamos el paso como una cadena de texto
-                    if isinstance(paso, str):
-                        Simulador._actualizar_accion(
-                            acciones,
-                            indice,
-                            f"Mover brazo - {paso}",
-                        )
-                        pasos.pop(0)
-
-                linea_actual = linea_actual.siguiente
-                indice += 1
-
-            salida.encolar(PasoSimulacion(segundo_actual, acciones))
-            total_tiempo += 1
-
-        # Imprimir el resultado en consola
         print(
-            f"El producto {producto.nombre} se puede elaborar óptimamente en {total_tiempo} segundos."
+            "Tiempo | "
+            + " | ".join(
+                [f"Línea de ensamblaje {i+1}" for i in range(maquina.cantidad_lineas)]
+            )
         )
-        nodo_actual = salida.frente
+        print("-" * (8 + 30 * maquina.cantidad_lineas))
+
+        matriz = Matriz()
+
+        pasos_pendientes = [ListaPasos() for _ in range(maquina.cantidad_lineas)]
+        nodo_actual = pasos_producto.cabeza
         while nodo_actual:
-            acciones = nodo_actual.dato.acciones
-            accion_actual = acciones.frente
-            while accion_actual:
-                print(accion_actual.dato, end=" | ")
-                accion_actual = accion_actual.siguiente
-            print()
+            pasos_pendientes[nodo_actual.linea - 1].agregar(
+                nodo_actual.linea, nodo_actual.componente
+            )
             nodo_actual = nodo_actual.siguiente
 
-        return ResultadoSimulacion(total_tiempo, salida)
+        nodo_actual = pasos_producto.cabeza
+
+        while (
+            nodo_actual
+            or verificar_ensamblando(maquina)
+            or any(not lista.esta_vacia() for lista in pasos_pendientes)
+        ):
+            tiempo_total += 1
+            acciones = ["No hacer nada"] * maquina.cantidad_lineas
+            fila = matriz.agregar_fila()
+
+            ensamblando = False
+
+            for i in range(maquina.cantidad_lineas):
+                linea = maquina.lineas.obtener(i)
+                if linea.tiempo_ensamblaje_restante > 0:
+                    linea.tiempo_ensamblaje_restante -= 1
+                    if linea.tiempo_ensamblaje_restante == 0:
+                        acciones[i] = f"Ensamblar componente {linea.posicion_brazo}"
+                    else:
+                        acciones[i] = f"Ensamblando C{linea.posicion_brazo}"
+                    ensamblando = True
+
+            if not ensamblando and nodo_actual:
+                for i in range(maquina.cantidad_lineas):
+                    linea = maquina.lineas.obtener(i)
+                    if not pasos_pendientes[i].esta_vacia():
+                        paso = pasos_pendientes[i].cabeza
+                        if paso.componente != linea.posicion_brazo:
+                            acciones[i] = mover_brazo(linea, paso)
+                        else:
+                            pasos_pendientes[i].desencolar()
+                            acciones[i] = iniciar_ensamblaje(linea, paso, maquina)
+                            ensamblando = True
+                            nodo_actual = nodo_actual.siguiente
+                            break  # Salir del bucle para que otras líneas no hagan nada
+
+            for i, accion in enumerate(acciones):
+                matriz.agregar_columna(fila, accion)
+
+            print(
+                f"{tiempo_total:6d} | "
+                + " | ".join([f"{accion:28}" for accion in acciones])
+            )
+
+        print(
+            f"\nEl producto {producto.nombre} se puede elaborar óptimamente en {tiempo_total} segundos."
+        )
+        return tiempo_total, matriz
 
     @staticmethod
-    def _actualizar_accion(cola_acciones, indice, nueva_accion):
-        actual = cola_acciones.frente
-        for _ in range(indice):
-            if actual.siguiente:
-                actual = actual.siguiente
-            else:
-                break
-        if actual:
-            actual.dato = nueva_accion
+    def _hay_lineas_trabajando(maquina):
+        for i in range(maquina.cantidad_lineas):
+            if maquina.lineas.obtener(i).tiempo_ensamblaje_restante > 0:
+                return True
+        return False

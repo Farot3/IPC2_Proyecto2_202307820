@@ -2,46 +2,46 @@
 <ListaMaquinas>
     <Maquina>
         <NombreMaquina> Macaco </NombreMaquina>
-        <CantidadLineasProduccion> 3 </CantidadLineasProduccion>
-        <CantidadComponentes> 4 </CantidadComponentes>
-        <TiempoEnsamblaje> 5 </TiempoEnsamblaje>
+        <CantidadLineasProduccion> 5 </CantidadLineasProduccion>
+        <CantidadComponentes> 10 </CantidadComponentes>
+        <TiempoEnsamblaje> 2 </TiempoEnsamblaje>
         <ListadoProductos>
             <Producto>
                 <nombre> caja </nombre>
                 <elaboracion>
-                    Diego
+                    L3C3 L1C7 L2C8 L5C5 L4C4
                 </elaboracion>
             </Producto>
             <Producto>
                 <nombre> Carro </nombre>
                 <elaboracion>
-                    Juan
+                    L3C1 L5C10 L2C2 L1C4 L3C1
                 </elaboracion>
             </Producto>
             <Producto>
                 <nombre> bombilla </nombre>
                 <elaboracion>
-                    Lolero
+                    L2C4 L3C3 L5C1 L4C7 L1C9
                 </elaboracion>
             </Producto>
         </ListadoProductos>
     </Maquina>   
     <Maquina>
         <NombreMaquina> Marcelo </NombreMaquina>
-        <CantidadLineasProduccion> 2 </CantidadLineasProduccion>
+        <CantidadLineasProduccion> 4 </CantidadLineasProduccion>
         <CantidadComponentes> 3 </CantidadComponentes>
-        <TiempoEnsamblaje> 4 </TiempoEnsamblaje>
+        <TiempoEnsamblaje> 2 </TiempoEnsamblaje>
         <ListadoProductos>
             <Producto>
                 <nombre> socket de luz </nombre>
                 <elaboracion>
-                    ROberto
+                    L1C9 L1C4 L2C7 L3C5 L4C2 L4C8
                 </elaboracion>
             </Producto>
             <Producto>
                 <nombre> Fusible </nombre>
                 <elaboracion>
-                    Pedro
+                    L4C3 L2C5 L1C8 L3C1 L3C7 L4C9
                 </elaboracion>
             </Producto>
         </ListadoProductos>

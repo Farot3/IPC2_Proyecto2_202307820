@@ -21,7 +21,7 @@
         <p>Componentes: {{ maquina.cantidad_componentes }}</p>
         <p>Tiempo de ensamblaje: {{ maquina.tiempo_ensamblaje }}</p>
         <h2>Producto: {{ producto.nombre }}</h2>
-        <p>Elaborado por: {{ producto.elaboracion }}</p>
+        <p>Elaboración {{ producto.elaboracion }}</p>
 
         <form action="/producto/{{ maquina.nombre_maquina }}/{{ producto.nombre }}" method="POST">
             <button type="submit">Simular Ensamblaje</button>

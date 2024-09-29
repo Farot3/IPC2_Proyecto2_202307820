@@ -97,26 +97,24 @@ def producto(nombre_maquina, nombre_producto):
     if not maquina:
         return "Máquina no encontrada", 404
 
-    producto = maquina.productos.buscar_producto(nombre_producto)
-    if not producto:
+    nodo_producto = maquina.productos.buscar_producto(nombre_producto)
+    if not nodo_producto:
         return "Producto no encontrado", 404
+
+    producto = nodo_producto  # Usar directamente el nodo_producto
 
     resultado_simulacion = None
     if request.method == "POST":
         print("Solicitud POST recibida")  # Mensaje de depuración
-        resultado_simulacion = Simulador.simular_ensamblaje(maquina, producto)
+        tiempo_total, resultado_simulacion = Simulador.simular(
+            maquina, producto
+        )  # Cambiar a simular
         # Imprimir el resultado en consola
         print(
-            f"El producto {producto.nombre} se puede elaborar óptimamente en {resultado_simulacion.tiempo_total} segundos."
+            f"El producto {producto.nombre} se puede elaborar óptimamente en {tiempo_total} segundos."
         )
-        nodo_actual = resultado_simulacion.pasos.frente
+        nodo_actual = resultado_simulacion.pasos.cabeza
         while nodo_actual:
-            acciones = nodo_actual.dato.acciones
-            accion_actual = acciones.frente
-            while accion_actual:
-                print(accion_actual.dato, end=" | ")
-                accion_actual = accion_actual.siguiente
-            print()
             nodo_actual = nodo_actual.siguiente
 
     return render_template(

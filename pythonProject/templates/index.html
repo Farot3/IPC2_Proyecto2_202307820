@@ -36,7 +36,7 @@
         <div>
             {% for producto in productos %}
             <form action="/seleccionar_producto/{{ producto.producto.nombre }}" method="GET">
-                <button type="submit">{{ producto.producto.nombre }} (Elaborado por: {{ producto.producto.elaboracion
+                <button type="submit">{{ producto.producto.nombre }} (Elaboración: {{ producto.producto.elaboracion
                     }})</button>
             </form>
             {% endfor %}

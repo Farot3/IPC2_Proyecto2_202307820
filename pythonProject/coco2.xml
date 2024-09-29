@@ -2,26 +2,26 @@
 <ListaMaquinas>
     <Maquina>
         <NombreMaquina> TodoTerreno </NombreMaquina>
-        <CantidadLineasProduccion> 4 </CantidadLineasProduccion>
-        <CantidadComponentes> 2 </CantidadComponentes>
-        <TiempoEnsamblaje> 6 </TiempoEnsamblaje>
+        <CantidadLineasProduccion> 3 </CantidadLineasProduccion>
+        <CantidadComponentes> 8 </CantidadComponentes>
+        <TiempoEnsamblaje> 2 </TiempoEnsamblaje>
         <ListadoProductos>
             <Producto>
                 <nombre> Avion </nombre>
                 <elaboracion>
-                    Yanet
+                    L1C1 L2C4 L3C3 L2C5
                 </elaboracion>
             </Producto>
             <Producto>
                 <nombre> Avioneta </nombre>
                 <elaboracion>
-                    Larry
+                    L3C4 L1C5 L2C7 L3C1
                 </elaboracion>
             </Producto>
             <Producto>
                 <nombre> Cable </nombre>
                 <elaboracion>
-                    Minion
+                    L1C5 L2C2 L1C7 L3C3
                 </elaboracion>
             </Producto>
         </ListadoProductos>
@@ -29,19 +29,19 @@
     <Maquina>
         <NombreMaquina> Lirio </NombreMaquina>
         <CantidadLineasProduccion> 3 </CantidadLineasProduccion>
-        <CantidadComponentes> 4 </CantidadComponentes>
-        <TiempoEnsamblaje> 6 </TiempoEnsamblaje>
+        <CantidadComponentes> 9 </CantidadComponentes>
+        <TiempoEnsamblaje> 2 </TiempoEnsamblaje>
         <ListadoProductos>
             <Producto>
                 <nombre> pachon </nombre>
                 <elaboracion>
-                    RIgoberto
+                    L2C3 L3C4 L1C9 L3C8
                 </elaboracion>
             </Producto>
             <Producto>
                 <nombre> Audifonos </nombre>
                 <elaboracion>
-                    EL Chavo
+                    L3C4 L1C2 L2C3 L2C7 L3C9
                 </elaboracion>
             </Producto>
         </ListadoProductos>
