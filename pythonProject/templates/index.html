@@ -10,12 +10,12 @@
 
 <body>
     <a class="button1" type="button" href="/">Archivo</a>
-    <a class="button2" type="button">Reportes</a>
+    <a class="button2" type="button" href="/reportes">Reportes</a>
     <a class="button3" type="button" href="/ayuda">Ayuda</a>
 
     <div class="container">
         <h1>Página principal</h1>
-        <h2>Subir los archivos para analizar las maquinas</h2>
+        <h2 class="macaco">Subir los archivos para analizar las Maquinas</h2>
         <form action="/buscar" method="POST" enctype="multipart/form-data">
             <input type="file" id="fileInput" name="file" accept=".xml" multiple>
             <button type="submit" class="button4">Entrada</button>
@@ -23,21 +23,24 @@
         <button type="submit" class="button5">Salida</button>
 
         <h2>Seleccionar Máquina</h2>
-        {% if maquinas.cabeza %}
-        {% for maquina in maquinas %}
-        <form action="/seleccionar_maquina/{{ maquina.nombre_maquina }}" method="GET">
-            <button type="submit">{{ maquina.nombre_maquina }}</button>
-        </form>
-        {% endfor %}
+        {% if Maquinas.cabeza %}
+        <ul>
+            {% for nombre_maquina in Maquinas.obtener_nombres_maquinas() %}
+            <form action="/seleccionar_maquina/{{ nombre_maquina }}" method="GET">
+                <button type="submit">{{ nombre_maquina }}</button>
+            </form>
+            {% endfor %}
+        </ul>
+        {% else %}
+        <p>No hay máquinas disponibles.</p>
         {% endif %}
 
         {% if maquina_seleccionada %}
-        <h2>Productos de la Máquina Seleccionada: {{ maquina_seleccionada.nombre_maquina }}</h2>
+        <h2>Productos de la Máquina Seleccionada: {{ maquina_seleccionada.maquina.get_nombre_maquina() }}</h2>
         <div>
-            {% for producto in productos %}
-            <form action="/seleccionar_producto/{{ producto.producto.nombre }}" method="GET">
-                <button type="submit">{{ producto.producto.nombre }} (Elaboración: {{ producto.producto.elaboracion
-                    }})</button>
+            {% for nombre_producto in nombres_productos %}
+            <form action="/seleccionar_producto/{{ nombre_producto }}" method="GET">
+                <button type="submit">{{ nombre_producto }}</button>
             </form>
             {% endfor %}
         </div>

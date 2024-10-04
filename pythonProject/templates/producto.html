@@ -10,28 +10,52 @@
 
 <body>
     <a class="button1" type="button" href="/">Archivo</a>
-    <a class="button2" type="button">Reportes</a>
+    <a class="button2" type="button" href="/reportes">Reportes</a>
     <a class="button3" type="button" href="/ayuda">Ayuda</a>
 
     <div class="container">
         <h1>Detalles del Producto</h1>
-        {% if maquina and producto %}
-        <h2>Máquina: {{ maquina.nombre_maquina }}</h2>
-        <p>Líneas de producción: {{ maquina.cantidad_lineas }}</p>
-        <p>Componentes: {{ maquina.cantidad_componentes }}</p>
-        <p>Tiempo de ensamblaje: {{ maquina.tiempo_ensamblaje }}</p>
+        {% if producto %}
         <h2>Producto: {{ producto.nombre }}</h2>
-        <p>Elaboración {{ producto.elaboracion }}</p>
 
-        <form action="/producto/{{ maquina.nombre_maquina }}/{{ producto.nombre }}" method="POST">
+        <h3>Componentes</h3>
+        <ul>
+            {% for paso in pasos_elaboracion %}
+            <li>{{ paso }}</li>
+            {% endfor %}
+        </ul>
+
+        <form action="/seleccionar_producto/{{ producto.nombre }}" method="POST">
             <button type="submit">Simular Ensamblaje</button>
         </form>
 
-        {% if resultado_simulacion %}
+        <form action="/seleccionar_producto/{{ producto.nombre }}" method="POST">
+            <label for="tiempo">Ingrese el tiempo (t):</label>
+            <input type="number" id="tiempo" name="tiempo" min="1" required>
+            <button type="submit">Mostrar Gráfica</button>
+        </form>
+
+        {% if error %}
+        <div id="error">
+            <h3>{{ error }}</h3>
+        </div>
+        {% endif %}
+
+        {% if tabla_html %}
         <div id="resultado-simulacion">
             <h3>Resultado de la Simulación</h3>
-            <p>El producto {{ producto.nombre }} se puede elaborar óptimamente en {{ resultado_simulacion.tiempo_total
-                }} segundos.</p>
+            <div>
+                {{ tabla_html|safe }}
+            </div>
+        </div>
+        {% endif %}
+
+        {% if grafica_html %}
+        <div id="resultado-grafica">
+            <h3>Gráfica en el tiempo {{ tiempo }}</h3>
+            <div>
+                {{ grafica_html|safe }}
+            </div>
         </div>
         {% endif %}
 

@@ -4,12 +4,12 @@
         <NombreMaquina> Macaco </NombreMaquina>
         <CantidadLineasProduccion> 5 </CantidadLineasProduccion>
         <CantidadComponentes> 10 </CantidadComponentes>
-        <TiempoEnsamblaje> 2 </TiempoEnsamblaje>
+        <TiempoEnsamblaje> 5 </TiempoEnsamblaje>
         <ListadoProductos>
             <Producto>
                 <nombre> caja </nombre>
                 <elaboracion>
-                    L3C3 L1C7 L2C8 L5C5 L4C4
+                    L3C4 L1C7 L3C2 L2C8 L5C5 L5C11
                 </elaboracion>
             </Producto>
             <Producto>
