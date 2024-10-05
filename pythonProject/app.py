@@ -1,13 +1,13 @@
 import re
-from flask import Flask, render_template, request, redirect, url_for
+from flask import Flask, render_template, request, redirect, url_for, flash
 import xml.etree.ElementTree as ET
-import modules.ListaMaquina1 as lm
-import modules.ListaSimple as ls
-import modules.ListaProducto1 as lp
-import modules.Listalinea as ll
-import modules.ColaInstrucciones as ci
-import modules.Cola as c
-import modules.matriz as m
+import modules.ListaMaquina1 as LM
+import modules.ListaSimple as LS
+import modules.ListaProducto1 as LP
+import modules.Listalinea as LL
+import modules.ColaInstrucciones as CI
+import modules.Cola as C
+import modules.matriz as M
 from modules.ListaElaboracionNodos import ListaElaboracionNodos
 from modules.NodoElaboraciónFormateada import ListaPasos
 from modules.NodoRelacion import ListaRelaciones
@@ -17,14 +17,15 @@ from modules.NodoReporte import ListaReportes
 from modules.secuenciaNodoCola import ListaNodos
 from modules.ListanodoGrafica import ListaComponentes
 from modules.NodoGráfica import ListaGraficas
+from modules.ListaNodoSecuencia import ListaNodosSecuencia
 import graphviz
 import os
 import shutil
 
-maquinas = lm.ListaMaquina()
-listaM = ls.ListaSimple()
+maquinas = LM.ListaMaquina()
+listaM = LS.ListaSimple()
 nueva_lista_elaboracion_global = ListaElaboracionNodos()
-lista_productos = lp.ListaProductos()  # Definir lista_productos globalmente
+lista_productos = LP.ListaProductos()  # Definir lista_productos globalmente
 lista_elaboracion = ListaElaboracionNodos()
 lista_producto_matriz = ListaProductoMatriz()
 lista_maquinas = ListaMaquinas()
@@ -41,7 +42,7 @@ def limpiar_directorio_uploads():
     uploads_dir = "uploads"
     if os.path.exists(uploads_dir):
         for filename in os.listdir(uploads_dir):
-            file_path = os.path.join(uploads_dir, filename)
+            file_path = uploads_dir + "/" + filename  # Concatenación manual
             try:
                 if os.path.isfile(file_path) or os.path.islink(file_path):
                     os.unlink(file_path)
@@ -97,14 +98,25 @@ def index():
                 if os.path.exists(file_path):
                     print(f"El archivo '{file_path}' ya existe.")
                     # Leer y analizar el nuevo archivo
-                    nuevas_maquinas = leer_archivo_xml(uploaded_file, ListaMaquinas())
+                    nuevas_maquinas, error1 = leer_archivo_xml(
+                        uploaded_file, ListaMaquinas()
+                    )
+                    if error1:
+                        os.remove(file_path)
+                        print(f"Archivo '{file_path}' eliminado debido a un error.")
+                        continue
                     # Sumar las nuevas máquinas al archivo existente
                     maquinas = sumar_maquinas(maquinas, nuevas_maquinas)
                 else:
-                    # Guardar el archivo y leerlo normalmente
+                    # Guardar el archivo temporalmente
                     uploaded_file.save(file_path)
                     print(f"Archivo guardado en '{file_path}'.")
-                    maquinas = leer_archivo_xml(file_path, maquinas)
+                    maquinas, error1 = leer_archivo_xml(file_path, maquinas)
+                    if error1:
+                        # Eliminar el archivo si hay un error
+                        os.remove(file_path)
+                        print(f"Archivo '{file_path}' eliminado debido a un error.")
+                        continue
 
                 if maquinas.tamano > 0:
                     procesar_info(0)
@@ -121,7 +133,7 @@ def seleccionar_maquina(nombre_maquina):
     global maquinas  # Asegurarse de que estamos usando la variable global
     # Buscar la máquina seleccionada
     maquina_seleccionada = maquinas.obtener_por_nombre(nombre_maquina)
-    productos_seleccionados = lp.ListaProductos()
+    productos_seleccionados = LP.ListaProductos()
 
     if maquina_seleccionada:
         print(
@@ -319,7 +331,7 @@ def generar_grafica(tiempo, matriz, nombre_producto):
     if columna_actual is not None:
         valor = columna_actual.valor if columna_actual.valor is not None else ""
         if valor and valor != "0" and "No hacer nada" not in valor:
-            for componente in valor.split("-"):
+            for componente in valor.split(","):
                 lista_componentes.agregar(componente)
 
     # Agregar nodos y aristas al gráfico
@@ -332,7 +344,7 @@ def generar_grafica(tiempo, matriz, nombre_producto):
         anterior = componente
 
     # Renderizar el gráfico a un archivo y devolver el HTML para incrustarlo
-    output_path = os.path.join("static", "secuencia_instrucciones")
+    output_path = "static/secuencia_instrucciones"
     dot.render(output_path, format="png", cleanup=True)
     grafica_html = f'<img src="/static/secuencia_instrucciones.png" alt="Secuencia de Instrucciones">'
 
@@ -381,7 +393,7 @@ def generar_div_componentes(componentes):
 def procesar_info(n):
     global maquinas  # Asegurarse de que estamos usando la variable global
     for i in range(maquinas.tamano - n):
-        listaProductos = ls.ListaSimple()
+        listaProductos = LS.ListaSimple()
 
         for j in range(maquinas.obtener_por_indice(i + n).productos.tamano):
             matrizProcesada = ejecutarInstrucciones(i + n, j)
@@ -443,6 +455,7 @@ def leer_archivo_xml(archivo, maquinas):
     global lista_productos
     global lista_relaciones
     global lista_maquinas
+    error1 = False
     try:
         tree = ET.parse(archivo)
         root = tree.getroot()
@@ -456,8 +469,8 @@ def leer_archivo_xml(archivo, maquinas):
         nueva_lista_elaboracion = ListaElaboracionNodos()
 
         for maquinas_xml in root.findall("Maquina"):
-            productos = lp.ListaProductos()
-            lineas = ll.ListaLineas()
+            productos = LP.ListaProductos()
+            lineas = LL.ListaLineas()
             nombre = maquinas_xml.find("NombreMaquina").text.strip()
             lineas.set_nombre_maquina(nombre)
 
@@ -473,11 +486,32 @@ def leer_archivo_xml(archivo, maquinas):
             listaProductos = maquinas_xml.find("ListadoProductos")
 
             for producto_xml in listaProductos.findall("Producto"):
-                producto = ci.ColaInstrucciones()
+                producto = CI.ColaInstrucciones()
                 nombreProducto = producto_xml.find("nombre").text.strip()
                 producto.nombreProducto = nombreProducto.strip()
 
                 instrucciones = producto_xml.find("elaboracion").text
+
+                matches_lineas = re.findall(r"L(\d+)", instrucciones)
+                max_ln = max(int(ln) for ln in matches_lineas) if matches_lineas else 0
+
+                if int(cantidadLineas) < max_ln:
+                    flash(
+                        f"La cantidad de líneas es menor que las elaboraciones de ensamblajes de las líneas en el archivo: {archivo}"
+                    )
+                    error1 = True
+                    continue
+
+                matches = re.findall(r"L\d+C(\d+)", instrucciones)
+                max_m = max(int(m) for m in matches) if matches else 0
+
+                if int(cantidadComponentes) < max_m:
+                    flash(
+                        f"La cantidad de componentes es menor que las elaboraciones de ensamblajes de los componentes en el archivo: {archivo}"
+                    )
+                    error1 = True
+                    return maquinas, error1
+                print(f"hola carnal {cantidadComponentes}, {tiempoEnsamblaje}")
 
                 # Agregar a la nueva lista de elaboraciones
                 nueva_lista_elaboracion.agregar(nombreProducto, instrucciones)
@@ -485,10 +519,10 @@ def leer_archivo_xml(archivo, maquinas):
                     nombreProducto, instrucciones
                 )  # Llenar lista_elaboracion
 
-                listaSecuencia = ls.ListaSimple()
+                listaSecuencia = LS.ListaSimple()
 
                 for _ in range(int(cantidadLineas)):
-                    secuenciaComponente = c.Cola()
+                    secuenciaComponente = C.Cola()
                     listaSecuencia.agregar(secuenciaComponente)
 
                 # Usar split para eliminar espacios extras y dividir las instrucciones
@@ -526,10 +560,13 @@ def leer_archivo_xml(archivo, maquinas):
                     producto, nombreProducto, listaSecuencia
                 )  # Llenar lista_productos
             # productos.mostrar()
-
+            print(f"depurando la vida {cantidadComponentes}, {tiempoEnsamblaje}")
             maquinas.agregar(lineas, productos)
-
+            print(f"más falso que mi vida {cantidadComponentes}, {tiempoEnsamblaje}")
             # Agregar nodo de máquina a la lista de máquinas
+            print(
+                f"Agregando máquina: {nombre}, {cantidadLineas}, {cantidadComponentes}, {tiempoEnsamblaje}"
+            )
             lista_maquinas.agregar(
                 nombre,
                 int(cantidadLineas),
@@ -557,13 +594,18 @@ def leer_archivo_xml(archivo, maquinas):
                 nodo_producto = nodo_producto.siguiente
 
     except FileNotFoundError:
-        print(f"El archivo '{archivo}' no existe. Por favor, verifica el directorio.")
+        print(
+            f"El archivo '{archivo.filename}' no existe. Por favor, verifica el directorio."
+        )
+        error1 = True
     except ET.ParseError:
-        print(f"El archivo '{archivo}' no es un archivo XML válido.")
+        print(f"El archivo '{archivo.filename}' no es un archivo XML válido.")
+        error1 = True
     except Exception as e:
-        print(f"Error: {e}")
+        print(f"Error al procesar el archivo: {str(e)}", "error")
+        error1 = True
 
-    return maquinas  # Devolver la lista de máquinas
+    return maquinas, error1  # Devolver la lista de máquinas
 
 
 def ejecutarInstrucciones(noMaquina, noProducto):
@@ -585,13 +627,33 @@ def ejecutarInstrucciones(noMaquina, noProducto):
     nombreProducto = instrucciones.nombreProducto
     productoEnsamblado = True
     # Agregar una columna extra al principio de la matriz
-    matrizDatos = m.Matriz(2, lineas.noLineas + 2, nombreProducto)
-    matrizDatos.establecer_valor(0, 1, "Segundo ")
+    matrizDatos = M.Matriz(2, lineas.noLineas + 2, nombreProducto)
+    matrizDatos.establecer_valor(0, 1, "Tiempo ")
     matrizDatos.establecer_valor(0, 0, "Secuencia ")
 
     for i in range(lineas.noLineas):
         matrizDatos.establecer_valor(0, i + 2, "Linea " + str(i + 1))
     n = 1
+
+    # Lista para almacenar todas las secuencias activas
+    secuencias_activas = ListaNodosSecuencia()
+
+    # Inicializar todas las secuencias al principio
+    for i in range(lineas.noLineas):
+        secuencia = secuencias.obtener(i)
+        while not secuencia.esta_vacia():
+            componente = secuencia.primero()
+            secuencias_activas.agregar(f"L{i+1}C{componente}")
+            secuencia.desencolar()
+
+    # Restaurar las secuencias originales
+    for i in range(lineas.noLineas):
+        secuencia = secuencias.obtener(i)
+
+        for secuencia_activa in secuencias_activas.obtener_todos():
+            if secuencia_activa.startswith(f"L{i+1}"):
+                componente = int(secuencia_activa.split("C")[1])
+                secuencia.encolar(componente)
 
     while productoEnsamblado:
         lineaEnsamblar = -1
@@ -643,8 +705,7 @@ def ejecutarInstrucciones(noMaquina, noProducto):
                 matrizDatos.establecer_valor(n, i + 2, "No hacer nada")
 
         # Almacenar la secuencia que se está evaluando en la columna extra
-        secuencia_str = secuencias_ejecutadas.obtener_todos()
-        matrizDatos.establecer_valor(n, 0, secuencia_str)
+        matrizDatos.establecer_valor(n, 0, str(secuencias_activas))
         matrizDatos.establecer_valor(n, 1, "Segundo " + str(n))
 
         if lineaEnsamblar != -1:
@@ -656,6 +717,8 @@ def ejecutarInstrucciones(noMaquina, noProducto):
             lineas.obtener(lineaEnsamblar).ensamblado = False
             instrucciones.desencolar()
             secuencias.obtener(lineaEnsamblar).desencolar()
+            secuencia_a_eliminar = f"L{lineaEnsamblar+1}C{instruccion.componente}"
+            secuencias_activas.eliminar(secuencia_a_eliminar)
             lineaEnsamblar = -1
 
         if todas_vacias or instrucciones.primeroEnsamblado() is None:
@@ -664,14 +727,6 @@ def ejecutarInstrucciones(noMaquina, noProducto):
         else:
             matrizDatos.anadir_fila()
 
-        # Imprimir cada secuencia que se esté ejecutando en ese segundo
-        print(f"Segundo {n}:")
-        for i in range(lineas.noLineas):
-            secuencia = secuencias.obtener(i)
-            if not secuencia.esta_vacia():
-                componente = secuencia.primero()
-                print(f"Linea {i + 1}: Componente {componente}")
-
     productoEnsamblado = True
     return matrizDatos
 
@@ -679,37 +734,78 @@ def ejecutarInstrucciones(noMaquina, noProducto):
 def exportar_xml():
     global maquinas  # Asegurarse de que estamos usando la variable global
 
-    root = ET.Element("SimulaciónSalidaTodasLasMquinas")
+    root = ET.Element("SalidaSimulacion")
 
     maquina_actual = maquinas.cabeza
     while maquina_actual is not None:
         maquina_element = ET.SubElement(root, "Maquina")
         nombre_element = ET.SubElement(maquina_element, "Nombre")
-        nombre_element.text = maquina_actual.maquina.nombreMaquina  # Corregir el acceso al nombre de la máquina
+        nombre_element.text = (
+            maquina_actual.maquina.nombreMaquina
+        )  # Corregir el acceso al nombre de la máquina
 
         listado_productos_element = ET.SubElement(maquina_element, "ListadoProductos")
         producto_actual = maquina_actual.productos.cabeza
         while producto_actual is not None:
             producto_element = ET.SubElement(listado_productos_element, "Producto")
             nombre_producto_element = ET.SubElement(producto_element, "Nombre")
-            nombre_producto_element.text = producto_actual.nombreProducto
+            nombre_producto_element.text = (
+                producto_actual.nombre
+            )  # Corregir el acceso al nombre del producto
 
-            tiempo_total_element = ET.SubElement(producto_element, "TiempoTotal")
-            tiempo_total_element.text = str(producto_actual.tiempo_total)
+            # Generar la tabla HTML para el producto usando la matriz
+            nodo_producto_matriz = lista_producto_matriz.obtener_por_nombre(
+                producto_actual.nombre
+            )
+            if nodo_producto_matriz:
+                matriz = nodo_producto_matriz.matriz
+                tabla_html, error, tiempo_total = generar_tabla_html(matriz)
+                if error:
+                    print(
+                        f"Error al generar la tabla HTML para el producto {producto_actual.nombre}: {error}"
+                    )
+                    producto_actual = producto_actual.siguiente
+                    continue
 
-            elaboracion_optima_element = ET.SubElement(producto_element, "ElaboracionOptima")
-            for tiempo in producto_actual.elaboracion_optima:
-                tiempo_element = ET.SubElement(elaboracion_optima_element, "Tiempo", NoSegundo=str(tiempo.no_segundo))
-                for linea in tiempo.lineas:
-                    linea_element = ET.SubElement(tiempo_element, "LineaEnsamblaje", NoLinea=str(linea.no_linea))
-                    linea_element.text = linea.instruccion
+                # Extraer la información de la tabla HTML y agregarla al XML
+                tiempo_total_element = ET.SubElement(producto_element, "TiempoTotal")
+                tiempo_total_element.text = str(tiempo_total)
+
+                elaboracion_optima_element = ET.SubElement(
+                    producto_element, "ElaboracionOptima"
+                )
+                fila_actual = matriz.cabeza.abajo  # Omitir la primera fila
+                segundo = 1
+                while fila_actual is not None:
+                    tiempo_element = ET.SubElement(
+                        elaboracion_optima_element, "Tiempo", NoSegundo=str(segundo)
+                    )
+                    columna_actual = fila_actual.siguiente  # Omitir la primera columna
+                    if columna_actual is not None:
+                        columna_actual = (
+                            columna_actual.siguiente
+                        )  # Omitir la segunda columna
+                    no_linea = 1
+                    while columna_actual is not None:
+                        linea_element = ET.SubElement(
+                            tiempo_element, "LineaEnsamblaje", NoLinea=str(no_linea)
+                        )
+                        linea_element.text = (
+                            columna_actual.valor
+                            if columna_actual.valor is not None
+                            else "No hacer nada"
+                        )
+                        columna_actual = columna_actual.siguiente
+                        no_linea += 1
+                    fila_actual = fila_actual.abajo
+                    segundo += 1
 
             producto_actual = producto_actual.siguiente
 
         maquina_actual = maquina_actual.siguiente
 
     tree = ET.ElementTree(root)
-    tree.write("salida.xml", encoding="utf-8", xml_declaration=True)
+    tree.write("exportación.xml", encoding="utf-8", xml_declaration=True)
 
 
 if __name__ == "__main__":
