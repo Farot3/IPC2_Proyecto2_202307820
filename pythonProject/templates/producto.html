@@ -29,17 +29,12 @@
             <button type="submit">Simular Ensamblaje</button>
         </form>
 
-        <form action="/seleccionar_producto/{{ producto.nombre }}" method="POST">
+        {% if mostrar_simulacion %}
+        <form action="/mostrar_grafica/{{ producto.nombre }}" method="POST">
             <label for="tiempo">Ingrese el tiempo (t):</label>
             <input type="number" id="tiempo" name="tiempo" min="1" required>
             <button type="submit">Mostrar Gráfica</button>
         </form>
-
-        {% if error %}
-        <div id="error">
-            <h3>{{ error }}</h3>
-        </div>
-        {% endif %}
 
         {% if tabla_html %}
         <div id="resultado-simulacion">
@@ -49,6 +44,15 @@
             </div>
         </div>
         {% endif %}
+        {% endif %}
+
+        {% if error %}
+        <div id="error">
+            <h3>{{ error }}</h3>
+        </div>
+        {% endif %}
+
+        <p>Tiempo total de procesamiento: {{ tiempo_total }} segundos</p>
 
         {% if grafica_html %}
         <div id="resultado-grafica">
@@ -56,6 +60,12 @@
             <div>
                 {{ grafica_html|safe }}
             </div>
+        </div>
+        {% endif %}
+
+        {% if grafica %}
+        <div id="grafica">
+            {{ grafica|safe }}
         </div>
         {% endif %}
 

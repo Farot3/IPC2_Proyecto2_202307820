@@ -1,5 +1,5 @@
 import re
-from flask import Flask, render_template, request
+from flask import Flask, render_template, request, redirect, url_for
 import xml.etree.ElementTree as ET
 import modules.ListaMaquina1 as lm
 import modules.ListaSimple as ls
@@ -14,6 +14,12 @@ from modules.NodoRelacion import ListaRelaciones
 from modules.NodoProductoMatriz import ListaProductoMatriz
 from modules.NodoMaquin import ListaMaquinas
 from modules.NodoReporte import ListaReportes
+from modules.secuenciaNodoCola import ListaNodos
+from modules.ListanodoGrafica import ListaComponentes
+from modules.NodoGráfica import ListaGraficas
+import graphviz
+import os
+import shutil
 
 maquinas = lm.ListaMaquina()
 listaM = ls.ListaSimple()
@@ -23,10 +29,28 @@ lista_elaboracion = ListaElaboracionNodos()
 lista_producto_matriz = ListaProductoMatriz()
 lista_maquinas = ListaMaquinas()
 lista_reportes = ListaReportes()
+lista_graficas = ListaGraficas()
+lista_relaciones = ListaRelaciones()
 
 
 app = Flask(__name__)
 app.secret_key = "tu_clave_secreta"
+
+
+def limpiar_directorio_uploads():
+    uploads_dir = "uploads"
+    if os.path.exists(uploads_dir):
+        for filename in os.listdir(uploads_dir):
+            file_path = os.path.join(uploads_dir, filename)
+            try:
+                if os.path.isfile(file_path) or os.path.islink(file_path):
+                    os.unlink(file_path)
+                    print(f"Archivo eliminado: {file_path}")
+                elif os.path.isdir(file_path):
+                    shutil.rmtree(file_path)
+                    print(f"Directorio eliminado: {file_path}")
+            except Exception as e:
+                print(f"Error al eliminar {file_path}: {e}")
 
 
 @app.route("/")
@@ -44,18 +68,44 @@ def ayuda():
 def reporte():
     global lista_reportes  # Asegurarse de que estamos usando la variable global
     reportes = list(lista_reportes)
-    return render_template("reportes.html", reportes=reportes)
+    graficas = list(lista_graficas.obtener_todas())
+    return render_template("reportes.html", reportes=reportes, graficas=graficas)
+
+
+@app.route("/exportar_html")
+def exportar_XML():
+    exportar_xml()
+    return redirect(url_for("index"))
 
 
 @app.route("/buscar", methods=["GET", "POST"])
 def index():
-    global maquinas  # Declarar que vamos a usar la variable global
+    global maquinas
     if request.method == "POST":
         uploaded_files = request.files.getlist("file")
 
         for uploaded_file in uploaded_files:
             if uploaded_file.filename.endswith(".xml"):
-                maquinas = leer_archivo_xml(uploaded_file, maquinas)
+                file_path = os.path.join("uploads", uploaded_file.filename)
+
+                # Crear el directorio 'uploads' si no existe
+                if not os.path.exists("uploads"):
+                    os.makedirs("uploads")
+                    print("Directorio 'uploads' creado.")
+
+                # Verificar si el archivo ya existe
+                if os.path.exists(file_path):
+                    print(f"El archivo '{file_path}' ya existe.")
+                    # Leer y analizar el nuevo archivo
+                    nuevas_maquinas = leer_archivo_xml(uploaded_file, ListaMaquinas())
+                    # Sumar las nuevas máquinas al archivo existente
+                    maquinas = sumar_maquinas(maquinas, nuevas_maquinas)
+                else:
+                    # Guardar el archivo y leerlo normalmente
+                    uploaded_file.save(file_path)
+                    print(f"Archivo guardado en '{file_path}'.")
+                    maquinas = leer_archivo_xml(file_path, maquinas)
+
                 if maquinas.tamano > 0:
                     procesar_info(0)
             else:
@@ -111,10 +161,6 @@ def _procesar_elaboracion(elaboracion):
     return lista_pasos, error
 
 
-# Definir lista_relaciones globalmente
-lista_relaciones = ListaRelaciones()
-
-
 @app.route("/seleccionar_producto/<nombre_producto>", methods=["GET", "POST"])
 def seleccionar_producto(nombre_producto):
     global lista_relaciones  # Asegurarse de que estamos usando la variable global
@@ -123,6 +169,7 @@ def seleccionar_producto(nombre_producto):
 
     producto_seleccionado = None
     elaboracion_seleccionada = None
+    mostrar_simulacion = False  # Variable para controlar la visualización
 
     # Buscar la relación del producto seleccionado
     actual_relacion = lista_relaciones.cabeza
@@ -145,6 +192,7 @@ def seleccionar_producto(nombre_producto):
                 "producto.html",
                 producto=producto_seleccionado,
                 pasos_elaboracion=pasos_elaboracion,
+                mostrar_simulacion=mostrar_simulacion,
                 error="Error: La elaboración contiene un componente con valor C0.",
             )
     else:
@@ -153,27 +201,27 @@ def seleccionar_producto(nombre_producto):
 
     # Procesar el tiempo ingresado por el usuario
     grafica_html = None
+    grafica = None
+    download_link = None
     tiempo = None
+    tiempo_total = None
     nodo_producto_matriz = lista_producto_matriz.obtener_por_nombre(nombre_producto)
     if nodo_producto_matriz:
         matriz = nodo_producto_matriz.matriz
-        tabla_html, error = generar_tabla_html(matriz)
+        tabla_html, error, tiempo_total = generar_tabla_html(matriz)
         if error:
             return render_template(
                 "producto.html",
                 producto=producto_seleccionado,
                 pasos_elaboracion=pasos_elaboracion,
+                mostrar_simulacion=mostrar_simulacion,
                 error=error,
             )
-
         if request.method == "POST":
-            tiempo = request.form.get("tiempo")
-            if tiempo:
-                tiempo = int(tiempo)
-                grafica_html = generar_grafica_html(tiempo, matriz)
-                lista_reportes.agregar(
-                    producto_seleccionado.nombre, pasos_elaboracion, tabla_html
-                )
+            mostrar_simulacion = True  # Mostrar la simulación después de procesar
+            lista_reportes.agregar(
+                nodo_producto_matriz.producto.nombre, pasos_elaboracion, tabla_html
+            )
     else:
         tabla_html = None
 
@@ -183,28 +231,141 @@ def seleccionar_producto(nombre_producto):
         pasos_elaboracion=pasos_elaboracion,
         tabla_html=tabla_html,
         grafica_html=grafica_html,
+        grafica=grafica,
+        download_link=download_link,
         tiempo=tiempo,
+        tiempo_total=tiempo_total,
+        mostrar_simulacion=mostrar_simulacion,
         error=None,
     )
 
 
-def generar_grafica_html(tiempo, matriz):
+@app.route("/mostrar_grafica/<nombre_producto>", methods=["POST"])
+def mostrar_grafica(nombre_producto):
+    global lista_producto_matriz
+    global lista_reportes
+
+    tiempo = request.form.get("tiempo")
+    if tiempo:
+        tiempo = int(tiempo)
+        nodo_producto_matriz = lista_producto_matriz.obtener_por_nombre(nombre_producto)
+        if nodo_producto_matriz:
+            matriz = nodo_producto_matriz.matriz
+            grafica_html = generar_grafica_html(tiempo, matriz)
+            grafica = generar_grafica(
+                tiempo, matriz, nombre_producto
+            )  # Corregir la llamada
+            tabla_html, error, tiempo_total = generar_tabla_html(matriz)
+            if error:
+                return render_template(
+                    "producto.html",
+                    producto=nodo_producto_matriz.producto,
+                    pasos_elaboracion=ListaPasos(),
+                    tabla_html=tabla_html,
+                    grafica_html=grafica_html,
+                    grafica=grafica,
+                    tiempo=tiempo,
+                    tiempo_total=tiempo_total,
+                    mostrar_simulacion=True,  # Asegurarse de que la simulación se muestre
+                    error=error,
+                )
+
+            return render_template(
+                "producto.html",
+                producto=nodo_producto_matriz.producto,
+                pasos_elaboracion=ListaPasos(),  # Mantener los pasos de elaboración
+                tabla_html=tabla_html,
+                grafica_html=grafica_html,
+                grafica=grafica,
+                tiempo=tiempo,
+                tiempo_total=tiempo_total,
+                mostrar_simulacion=True,  # Asegurarse de que la simulación se muestre
+                error=None,
+            )
+
+    return redirect(url_for("seleccionar_producto", nombre_producto=nombre_producto))
+
+
+def sumar_maquinas(maquinas_existentes, nuevas_maquinas):
+    for i in range(nuevas_maquinas.tamano):
+        nueva_maquina = nuevas_maquinas.obtener(i)
+        maquinas_existentes.agregar(nueva_maquina)
+    return maquinas_existentes
+
+
+def generar_grafica(tiempo, matriz, nombre_producto):
     fila_actual = matriz.cabeza
+    fila = 0
+
+    # Recorrer hasta el segundo especificado
     for _ in range(tiempo):
         if fila_actual is None:
             break
         fila_actual = fila_actual.abajo
+        fila += 1
+
+    if fila_actual is None:
+        return "<p>No hay datos para el segundo especificado.</p>", None
+
+    # Crear un objeto Digraph de graphviz
+    dot = graphviz.Digraph(
+        comment="Secuencia de Instrucciones", graph_attr={"rankdir": "LR"}
+    )
+
+    columna_actual = fila_actual
+    lista_componentes = ListaComponentes()
+
+    # Obtener los datos de la primera columna
+    if columna_actual is not None:
+        valor = columna_actual.valor if columna_actual.valor is not None else ""
+        if valor and valor != "0" and "No hacer nada" not in valor:
+            for componente in valor.split("-"):
+                lista_componentes.agregar(componente)
+
+    # Agregar nodos y aristas al gráfico
+    componentes = lista_componentes.obtener_componentes()
+    anterior = None
+    for componente in componentes:
+        dot.node(componente, componente)
+        if anterior:
+            dot.edge(anterior, componente)
+        anterior = componente
+
+    # Renderizar el gráfico a un archivo y devolver el HTML para incrustarlo
+    output_path = os.path.join("static", "secuencia_instrucciones")
+    dot.render(output_path, format="png", cleanup=True)
+    grafica_html = f'<img src="/static/secuencia_instrucciones.png" alt="Secuencia de Instrucciones">'
+
+    # Guardar la gráfica en la lista de gráficas
+    lista_graficas.agregar(nombre_producto, grafica_html)
+
+    return grafica_html
+
+
+def generar_grafica_html(tiempo, matriz):
+    fila_actual = matriz.cabeza
+    fila = 0
+
+    # Recorrer hasta el segundo especificado
+    for _ in range(tiempo):
+        if fila_actual is None:
+            break
+        fila_actual = fila_actual.abajo
+        fila += 1
 
     if fila_actual is None:
         return "<p>No hay datos para el segundo especificado.</p>"
 
     grafica_html = "<ul>"
     columna_actual = fila_actual
-    while columna_actual is not None:
+    columna = 0
+
+    # Solo tomar los datos de la primera columna
+    if columna_actual is not None:
         valor = columna_actual.valor if columna_actual.valor is not None else ""
-        if valor and valor != "0":  # Filtrar los que no hacen nada
+        if valor and valor != "0" and "No hacer nada" not in valor:
             grafica_html += f"<li>{valor}</li>"
-        columna_actual = columna_actual.siguiente
+
     grafica_html += "</ul>"
     return grafica_html
 
@@ -240,10 +401,15 @@ def generar_tabla_html(matriz):
     fila_actual = matriz.cabeza
     tabla_html = "<table border='1'>"
     error = False
+    tiempo_total = 0
 
     while fila_actual is not None:
         tabla_html += "<tr>"
         columna_actual = fila_actual
+
+        # Saltar la primera columna
+        if columna_actual is not None:
+            columna_actual = columna_actual.siguiente
 
         while columna_actual is not None:
             valor = columna_actual.valor if columna_actual.valor is not None else ""
@@ -254,6 +420,7 @@ def generar_tabla_html(matriz):
 
         tabla_html += "</tr>"
         fila_actual = fila_actual.abajo
+        tiempo_total += 1  # Incrementar el tiempo total por cada fila
 
     tabla_html += "</table>"
 
@@ -261,8 +428,13 @@ def generar_tabla_html(matriz):
         return (
             None,
             "Error: No se puede generar la tabla porque hay un componente con valor 0, lo cual está fuera de la dimensión de la tabla.",
+            None,
         )
-    return tabla_html, None
+    return (
+        tabla_html,
+        None,
+        tiempo_total - 1,
+    )
 
 
 def leer_archivo_xml(archivo, maquinas):
@@ -396,7 +568,7 @@ def leer_archivo_xml(archivo, maquinas):
 
 def ejecutarInstrucciones(noMaquina, noProducto):
     global maquinas  # Asegurarse de que estamos usando la variable global
-    maquina = maquinas.obtener_por_indice(noMaquina)
+    maquina = maquinas.obtener(noMaquina)
     nombreMaquina = maquina.productos.nombreMaquina
     producto = maquina.productos.obtener(noProducto)
     instrucciones = producto.valor
@@ -412,27 +584,28 @@ def ejecutarInstrucciones(noMaquina, noProducto):
 
     nombreProducto = instrucciones.nombreProducto
     productoEnsamblado = True
-    matrizDatos = m.Matriz(2, lineas.noLineas + 1, nombreProducto)
-    matrizDatos.establecer_valor(0, 0, "Segundo ")
+    # Agregar una columna extra al principio de la matriz
+    matrizDatos = m.Matriz(2, lineas.noLineas + 2, nombreProducto)
+    matrizDatos.establecer_valor(0, 1, "Segundo ")
+    matrizDatos.establecer_valor(0, 0, "Secuencia ")
 
     for i in range(lineas.noLineas):
-        matrizDatos.establecer_valor(0, i + 1, "Linea " + str(i + 1))
+        matrizDatos.establecer_valor(0, i + 2, "Linea " + str(i + 1))
     n = 1
 
     while productoEnsamblado:
         lineaEnsamblar = -1
-        instruccion = instrucciones.primero()
         todas_vacias = True  # Asume que todas las secuencias están vacías
+        secuencias_ejecutadas = ListaNodos()
 
         for i in range(lineas.noLineas):
-            secuencia = secuencias.obtener(
-                i
-            )  # Asegúrate de obtener la secuencia correcta aquí
+            secuencia = secuencias.obtener(i)
             linea = lineas.obtener(i)
 
             if not secuencia.esta_vacia():
                 todas_vacias = False  # Al menos una secuencia no está vacía
                 componente = secuencia.primero()
+                instruccion = instrucciones.primero()
 
                 if (
                     instruccion.linea == linea.id
@@ -445,54 +618,100 @@ def ejecutarInstrucciones(noMaquina, noProducto):
                             pasosExtra = pasosExtra2
                         matrizDatos.establecer_valor(
                             n,
-                            i + 1,
-                            "Ensamblar - comoponente " + str(instruccion.componente),
+                            i + 2,
+                            "Ensamblar - componente " + str(instruccion.componente),
                         )
-
+                        secuencias_ejecutadas.agregar(f"L{linea.id}C{componente}")
                     else:
-                        matrizDatos.establecer_valor(n, i + 1, "No hacer nada")
+                        matrizDatos.establecer_valor(n, i + 2, "No hacer nada")
                 else:
                     if int(linea.pos) < componente:
                         linea.moverAdelante()
                         matrizDatos.establecer_valor(
-                            n, i + 1, "Mover brazo - componente " + str(linea.pos)
+                            n, i + 2, "Mover brazo - componente " + str(linea.pos)
                         )
+                        secuencias_ejecutadas.agregar(f"L{linea.id}C{componente}")
                     elif int(linea.pos) > componente:
                         linea.moverAtras()
                         matrizDatos.establecer_valor(
-                            n, i + 1, "Mover brazo - componente " + str(linea.pos)
+                            n, i + 2, "Mover brazo - componente " + str(linea.pos - 1)
                         )
+                        secuencias_ejecutadas.agregar(f"L{linea.id}C{componente}")
                     elif int(linea.pos) == componente:
-                        matrizDatos.establecer_valor(n, i + 1, "No hacer nada")
+                        matrizDatos.establecer_valor(n, i + 2, "No hacer nada")
             else:
-                matrizDatos.establecer_valor(n, i + 1, "No hacer nada")
-        matrizDatos.establecer_valor(n, 0, "Segundo" + str(n))
+                matrizDatos.establecer_valor(n, i + 2, "No hacer nada")
+
+        # Almacenar la secuencia que se está evaluando en la columna extra
+        secuencia_str = secuencias_ejecutadas.obtener_todos()
+        matrizDatos.establecer_valor(n, 0, secuencia_str)
+        matrizDatos.establecer_valor(n, 1, "Segundo " + str(n))
 
         if lineaEnsamblar != -1:
             lineas.obtener(lineaEnsamblar).ensamblar()
-            # print("Linea: ", lineaEnsamblar, "ensamblada")
 
         n += 1
 
         if lineaEnsamblar != -1 and lineas.obtener(lineaEnsamblar).ensamblado:
             lineas.obtener(lineaEnsamblar).ensamblado = False
             instrucciones.desencolar()
-            secuencias.obtener(
-                lineaEnsamblar
-            ).desencolar()  # Desencola correctamente de la secuencia actual
-            lineaEnsamblar = -1  # Resetear líneaEnsamblar para evitar el bucle infinito
+            secuencias.obtener(lineaEnsamblar).desencolar()
+            lineaEnsamblar = -1
 
-        # Verificar si ya no hay más instrucciones que ensamblar
         if todas_vacias or instrucciones.primeroEnsamblado() is None:
             productoEnsamblado = False
             break
         else:
             matrizDatos.anadir_fila()
-    # matrizDatos.imprimirDatos()
-    # matrizDatos.imprimir_matriz()
+
+        # Imprimir cada secuencia que se esté ejecutando en ese segundo
+        print(f"Segundo {n}:")
+        for i in range(lineas.noLineas):
+            secuencia = secuencias.obtener(i)
+            if not secuencia.esta_vacia():
+                componente = secuencia.primero()
+                print(f"Linea {i + 1}: Componente {componente}")
+
     productoEnsamblado = True
     return matrizDatos
 
 
+def exportar_xml():
+    global maquinas  # Asegurarse de que estamos usando la variable global
+
+    root = ET.Element("SimulaciónSalidaTodasLasMquinas")
+
+    maquina_actual = maquinas.cabeza
+    while maquina_actual is not None:
+        maquina_element = ET.SubElement(root, "Maquina")
+        nombre_element = ET.SubElement(maquina_element, "Nombre")
+        nombre_element.text = maquina_actual.maquina.nombreMaquina  # Corregir el acceso al nombre de la máquina
+
+        listado_productos_element = ET.SubElement(maquina_element, "ListadoProductos")
+        producto_actual = maquina_actual.productos.cabeza
+        while producto_actual is not None:
+            producto_element = ET.SubElement(listado_productos_element, "Producto")
+            nombre_producto_element = ET.SubElement(producto_element, "Nombre")
+            nombre_producto_element.text = producto_actual.nombreProducto
+
+            tiempo_total_element = ET.SubElement(producto_element, "TiempoTotal")
+            tiempo_total_element.text = str(producto_actual.tiempo_total)
+
+            elaboracion_optima_element = ET.SubElement(producto_element, "ElaboracionOptima")
+            for tiempo in producto_actual.elaboracion_optima:
+                tiempo_element = ET.SubElement(elaboracion_optima_element, "Tiempo", NoSegundo=str(tiempo.no_segundo))
+                for linea in tiempo.lineas:
+                    linea_element = ET.SubElement(tiempo_element, "LineaEnsamblaje", NoLinea=str(linea.no_linea))
+                    linea_element.text = linea.instruccion
+
+            producto_actual = producto_actual.siguiente
+
+        maquina_actual = maquina_actual.siguiente
+
+    tree = ET.ElementTree(root)
+    tree.write("salida.xml", encoding="utf-8", xml_declaration=True)
+
+
 if __name__ == "__main__":
+    limpiar_directorio_uploads()
     app.run(debug=True)

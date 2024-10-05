@@ -91,6 +91,16 @@ class ListaMaquina:
             actual = actual.siguiente
         return nombres
 
+    def obtener(self, pos):
+        if self.esta_vacia():
+            return None
+        actual = self.cabeza
+        for i in range(pos):
+            if actual.siguiente is None:
+                return None
+            actual = actual.siguiente
+        return actual
+
     def __iter__(self):
         actual = self.cabeza
         while actual is not None:

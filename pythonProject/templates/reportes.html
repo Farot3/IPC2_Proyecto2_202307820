@@ -19,12 +19,23 @@
             <h2>Producto: {{ reporte.nombre_producto }}</h2>
             <h3>Componentes</h3>
             <ul>
+                {% if reporte.componentes %}
                 {% for componente in reporte.componentes %}
                 <li>{{ componente }}</li>
                 {% endfor %}
+                {% else %}
+                <li>No hay componentes disponibles.</li>
+                {% endif %}
             </ul>
             <h3>Tabla de Ensamblaje</h3>
             <div>{{ reporte.tabla_html | safe }}</div>
+        </div>
+        {% endfor %}
+        <h1>Gráficas Generadas</h1>
+        {% for grafica in graficas %}
+        <div class="grafica">
+            <h2>Producto: {{ grafica.nombre_producto }}</h2>
+            <div>{{ grafica.grafica_html | safe }}</div>
         </div>
         {% endfor %}
     </div>
